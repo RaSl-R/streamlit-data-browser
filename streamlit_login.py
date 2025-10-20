@@ -5,7 +5,10 @@ from passlib.context import CryptContext
 from utils.db import get_engine
 
 engine = get_engine()
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+pwd_context = CryptContext(
+    schemes=["argon2", "bcrypt_sha256", "bcrypt"],
+    deprecated="auto"
+)
 
 # --- Helpers ---
 def hash_password(password: str) -> str:
@@ -27,16 +30,29 @@ def get_user_permissions(conn, email: str) -> dict:
     # Vytvoří slovník, např. {'public': 'write', 'demo': 'read'}
     return {row[0]: row[1] for row in result}
 
-# Zjednodušená funkce check_login, vrací True/False
 def check_login(email: str, password: str, conn) -> bool:
-    result = conn.execute(
+    row = conn.execute(
         text("SELECT password_hash FROM auth.users WHERE email = :email"),
         {"email": email}
     ).fetchone()
-    if not result:
+    if not row:
         return False
-    # [cite_start]Ověření hesla [cite: 39]
-    return verify_password(password, result[0])
+
+    hashed = row[0]
+    try:
+        valid, new_hash = pwd_context.verify_and_update(password, hashed)
+    except ValueError as e:
+        st.error("Chyba při ověřování hesla. Zkontroluj instalaci bcrypt/argon2 backendu.")
+        print("DEBUG bcrypt backend error:", e)
+        return False
+
+    if valid and new_hash:
+        # automatický upgrade hashe na nové schéma (argon2)
+        conn.execute(
+            text("UPDATE auth.users SET password_hash = :hash WHERE email = :email"),
+            {"hash": new_hash, "email": email}
+        )
+    return bool(valid)
 
 # --- UI ---
 def login_form():

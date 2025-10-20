@@ -1,5 +1,5 @@
 streamlit
 sqlalchemy
 pandas
-passlib[bcrypt]
+passlib[argon2,bcrypt]
 psycopg2-binary

@@ -2,7 +2,8 @@ import streamlit as st
 import pandas as pd
 from datetime import datetime
 from sqlalchemy import create_engine, text
-from utils.db import get_connection
+from utils.db import get_engine
+
 import os
 
 @st.cache_data
@@ -13,7 +14,7 @@ def list_schemas(_conn):
 @st.cache_data
 def list_user_schemas(user_email: str):
     from utils.db import get_engine
-    with get_engine().connect() as conn:
+    with get_engine().begin() as conn:
         query = text("""
             SELECT DISTINCT p.schema_name
             FROM auth.users u
@@ -28,7 +29,7 @@ def list_user_schemas(user_email: str):
 @st.cache_data
 def list_tables(schema_name: str):
     from utils.db import get_engine
-    with get_engine().connect() as conn:
+    with get_engine().begin() as conn:
         result = conn.execute(
             text("""
                 SELECT table_name
@@ -106,8 +107,6 @@ def clear_filter_callback():
 def main_data_browser():
     st.set_page_config(layout="wide")
     st.title("📊 Data browser")
-
-    conn = get_connection()
 
     if "message" in st.session_state:
         st.success(st.session_state.message)

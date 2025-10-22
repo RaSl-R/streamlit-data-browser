@@ -4,7 +4,6 @@ from sqlalchemy import text
 from passlib.context import CryptContext
 from utils.db import get_engine
 
-engine = get_engine()
 pwd_context = CryptContext(
     schemes=["argon2", "bcrypt_sha256", "bcrypt"],
     deprecated="auto"
@@ -42,7 +41,7 @@ def check_login(email: str, password: str, conn) -> bool:
     try:
         valid, new_hash = pwd_context.verify_and_update(password, hashed)
     except ValueError as e:
-        st.error("Chyba při ověřování hesla. Zkontroluj instalaci bcrypt/argon2 backendu.")
+        st.error("Chyba při ověřování hesla.")
         print("DEBUG bcrypt backend error:", e)
         return False
 
@@ -62,7 +61,7 @@ def login_form():
         password = st.text_input("Heslo", type="password")
         submitted = st.form_submit_button("Přihlásit")
         if submitted:
-            with engine.begin() as conn:
+            with get_engine().begin() as conn:
                 # [cite_start]Upravená logika po přihlášení [cite: 52-58]
                 if check_login(email, password, conn):
                     st.session_state.logged_in = True
@@ -85,7 +84,7 @@ def register_form():
         password = st.text_input("Heslo", type="password")
         confirm = st.text_input("Potvrzení hesla", type="password")
 
-        with engine.connect() as conn:
+        with get_engine().begin() as conn:
             groups_dict = get_groups(conn)
             # [cite_start]Nahrazení původního selectboxu [cite: 67]
             requested_group_name = st.selectbox("Požadovaná skupina", options=list(groups_dict.keys()))
@@ -100,7 +99,7 @@ def register_form():
             requested_group_id = groups_dict.get(requested_group_name)
 
             try:
-                with engine.begin() as conn:
+                with get_engine().begin() as conn:
                     # [cite_start]Aktualizovaný INSERT příkaz [cite: 79-82]
                     conn.execute(
                         text("""
@@ -125,7 +124,7 @@ def change_password_form():
         if new_password != confirm:
             st.error("Nová hesla se neshodují")
             return
-        with engine.begin() as conn:
+        with get_engine().begin() as conn:
             role = check_login(st.session_state.user_email, old_password, conn)
             if not role:
                 st.error("Staré heslo není správné")
@@ -140,9 +139,7 @@ def change_password_form():
 def request_group_form():
     st.subheader("Žádost o skupinu")
 
-    engine = get_engine()
-
-    with engine.connect() as conn:
+    with get_engine().begin() as conn:
         groups_dict = {}
         try:
             # Načteme seznam skupin pro selectbox
@@ -194,7 +191,7 @@ def request_group_form():
     if submitted:
         requested_group_id = groups_dict.get(requested_group_name)
         try:
-            with engine.begin() as conn:
+            with get_engine().begin() as conn:
                 conn.execute(
                     text("""
                         UPDATE auth.users

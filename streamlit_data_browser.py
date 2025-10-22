@@ -67,17 +67,12 @@ def load_table_filtered(table_id, where=None):
         st.error(f"Došlo k chybě při načítání tabulky: {e}")
         return pd.DataFrame()
 
-def replace_table(conn, table_id, df):
-    schema_name, table_name = table_id.split('.', 1)
-
-    # ✅ Pokud běží stará transakce, zahoď ji
-    if conn.in_transaction():
-        conn.rollback()
-
+def replace_table(table_id, df):
     try:
-        with conn.begin():  # začni novou transakci
+        from utils.db import get_engine # Import je potřeba zde
+        with get_engine().begin() as conn:
             conn.execute(text(f'DROP TABLE IF EXISTS {table_id} CASCADE'))
-
+            
             # Vytvoření nové tabulky podle DataFrame
             create_sql = pd.io.sql.get_schema(df, table_name, con=conn, schema=schema_name)
             conn.execute(text(create_sql))
@@ -86,9 +81,8 @@ def replace_table(conn, table_id, df):
             df.to_sql(table_name, conn, schema=schema_name, if_exists='append', index=False, method='multi')
 
     except Exception as e:
-        if conn.in_transaction():
-            conn.rollback()
-        raise
+        st.error(f"Došlo k chybě při načítání tabulky: {e}")
+        return pd.DataFrame()
 
 def display_data_editor(df_to_edit, editor_key):
     edited_df = st.data_editor(
@@ -183,13 +177,13 @@ def main_data_browser():
 
     elif st.session_state.reload_data:
         if st.session_state.filter_applied and st.session_state.where_clause:
-            df = load_table_filtered(conn, selected_table_id, st.session_state.where_clause)
+            df = load_table_filtered(selected_table_id, st.session_state.where_clause)
         else:
-            df = load_table(conn, selected_table_id)
+            df = load_table(selected_table_id)
         st.session_state.reload_data = False
 
     if df is None:
-        df = load_table(conn, selected_table_id)
+        df = load_table(selected_table_id)
 
     editor_key = f"editor_{st.session_state.editor_key_counter}"
     edited_df = display_data_editor(df, editor_key)

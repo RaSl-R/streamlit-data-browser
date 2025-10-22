@@ -69,7 +69,9 @@ def load_table_filtered(table_id, where=None):
 
 def replace_table(table_id, df):
     try:
-        from utils.db import get_engine # Import je potřeba zde
+        from utils.db import get_engine
+        schema_name, table_name = table_id.split('.', 1)
+        
         with get_engine().begin() as conn:
             conn.execute(text(f'DROP TABLE IF EXISTS {table_id} CASCADE'))
             
@@ -208,7 +210,7 @@ def main_data_browser():
             # KROK 2: Pokud má uživatel oprávnění 'write', provedeme původní logiku
             try:
                 # ... (zbytek logiky pro COMMIT zůstává stejný) ...
-                replace_table(conn, selected_table_id, edited_df)
+                replace_table(selected_table_id, edited_df)
                 load_table.clear()
                 st.session_state.reload_data = True
                 st.session_state.editor_key_counter += 1
@@ -235,7 +237,7 @@ def main_data_browser():
                 imported_df = pd.read_csv(uploaded_file)
                 st.dataframe(imported_df, width='stretch')
                 if st.button("🚨 Nahradit celou tabulku importovanými daty"):
-                    replace_table(conn, selected_table_id, imported_df)
+                    replace_table(selected_table_id, imported_df)
                     load_table.clear()
                     st.session_state.reload_data = True
                     st.session_state.editor_key_counter += 1

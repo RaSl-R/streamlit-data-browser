@@ -3,8 +3,11 @@ import pandas as pd
 from datetime import datetime
 from sqlalchemy import create_engine, text
 from utils.db import get_engine
-
+import re
 import os
+
+DEFAULT_ROW_LIMIT = 10000
+PAGE_SIZE = 50
 
 @st.cache_data
 def list_schemas(_conn):
@@ -40,27 +43,81 @@ def list_tables(schema_name: str):
         )
         return {row[0]: f"{schema_name}.{row[0]}" for row in result}
 
-@st.cache_data(ttl=3600)
-def load_table(table_id):
+def validate_table_id(table_id: str) -> str:
     try:
-        from utils.db import get_engine # Import je potřeba zde
+        schema_name, table_name = table_id.split('.', 1)
+    except ValueError:
+        raise ValueError(f"Neplatný formát table_id: {table_id}. Očekáván 'schema.table'.")
+
+    tables_dict = list_tables(schema_name)
+    if table_id not in tables_dict.values():
+        raise ValueError(f"Neplatný nebo nepovolený název tabulky: {table_id}")
+    
+    safe_table_sql = f'"{schema_name}"."{table_name}"'
+    return safe_table_sql
+
+def validate_where_clause(where_clause: str, df_columns: list) -> str | None:
+    if ";" in where_clause:
+        return None
+    if not any(col in where_clause for col in df_columns):
+        return None
+    forbidden = re.compile(r"\b(DELETE|UPDATE|INSERT|DROP|ALTER|;|--)\b", re.IGNORECASE)
+    if forbidden.search(where):
+        return None
+    return where_clause
+
+@st.cache_data
+def get_row_count(table_id: str, where_clause: str = None) -> int:
+    """Vrací celkový počet řádků v tabulce (s volitelným WHERE)."""
+    try:
+        safe_table_sql = validate_table_id(table_id)
+        query = f"SELECT COUNT(*) FROM {safe_table_sql}"
+
+        if where_clause:
+            safe_where_clause = validate_where_clause(where_clause, [])
+            if safe_where_clause:
+                query += f" WHERE {safe_where_clause}"
+            else:
+                st.warning("WHERE výraz není validní. Byl ignorován.")
+
+        from utils.db import get_engine
         with get_engine().begin() as conn:
-            result = conn.execute(text(f"SELECT * FROM {table_id}"))
+            result = conn.execute(text(query)).scalar()
+            return int(result)
+    except Exception as e:
+        st.error(f"Chyba při zjišťování počtu řádků: {e}")
+        return 0
+
+@st.cache_data(ttl=3600)
+def load_table(table_id, offset=0, limit=PAGE_SIZE):
+    try:
+        safe_table_sql = validate_table_id(table_id)
+        from utils.db import get_engine
+        with get_engine().begin() as conn:
+            query_sql = f"SELECT * FROM {safe_table_sql} ORDER BY 1 LIMIT :limit OFFSET :offset"
+            result = conn.execute(text(query_sql), {"limit": limit, "offset": offset})
             df = pd.DataFrame(result.fetchall(), columns=result.keys())
             return df
     except Exception as e:
         st.error(f"Došlo k chybě při načítání tabulky: {e}")
         return pd.DataFrame()
 
+
 @st.cache_data(ttl=3600)
-def load_table_filtered(table_id, where=None):
-    query = f"SELECT * FROM {table_id}"
+def load_table_filtered(table_id, where_clause=None, offset=0, limit=PAGE_SIZE):
     try:
-        from utils.db import get_engine # Import je potřeba zde
+        safe_table_sql = validate_table_id(table_id)
+        query_sql = f"SELECT * FROM {safe_table_sql}"
+        from utils.db import get_engine
         with get_engine().begin() as conn:
-            if where:
-                query += f" WHERE {where}"
-            result = conn.execute(text(query))
+            if where_clause:
+                safe_where_clause = validate_where_clause(where_clause, [])
+                if safe_where_clause:
+                    query_sql += f" WHERE {safe_where_clause}"
+                else:
+                    st.warning("WHERE výraz není validní. Byl ignorován.")
+            query_sql += " ORDER BY 1 LIMIT :limit OFFSET :offset"
+            result = conn.execute(text(query_sql), {"limit": limit, "offset": offset})
             df = pd.DataFrame(result.fetchall(), columns=result.keys())
             return df
     except Exception as e:
@@ -70,20 +127,17 @@ def load_table_filtered(table_id, where=None):
 def replace_table(table_id, df):
     try:
         from utils.db import get_engine
-        schema_name, table_name = table_id.split('.', 1)
-        
+        safe_table_sql = validate_table_id(table_id)
+        schema_name, table_name = table_id.split('.', 1) 
         with get_engine().begin() as conn:
-            conn.execute(text(f'DROP TABLE IF EXISTS {table_id} CASCADE'))
-            
-            # Vytvoření nové tabulky podle DataFrame
+            conn.execute(text(f'DROP TABLE IF EXISTS {safe_table_sql} CASCADE'))
             create_sql = pd.io.sql.get_schema(df, table_name, con=conn, schema=schema_name)
             conn.execute(text(create_sql))
-
-            # Naplnění tabulky
-            df.to_sql(table_name, conn, schema=schema_name, if_exists='append', index=False, method='multi')
-
+            df.to_sql(table_name, conn, schema=schema_name, if_exists='append', index=False,
+                      method='multi')
     except Exception as e:
         st.error(f"Došlo k chybě při načítání tabulky: {e}")
+        return pd.DataFrame() při načítání tabulky: {e}")
         return pd.DataFrame()
 
 def display_data_editor(df_to_edit, editor_key):
@@ -169,6 +223,24 @@ def main_data_browser():
     if "reload_data" not in st.session_state:
         st.session_state.reload_data = True
 
+    # Inicializace session state pro stránkování
+    if "current_page" not in st.session_state:
+        st.session_state.current_page = 1
+
+    # Pokud se změní filtr nebo tabulka, resetujeme stránku na 1
+    # (Toto je zjednodušená logika, možná bude potřeba ji zpřesnit)
+    if st.session_state.reload_data:
+        st.session_state.current_page = 1
+
+    # Získání celkového počtu řádků
+    where_cond = st.session_state.where_clause if st.session_state.filter_applied else None
+    total_rows = get_row_count(selected_table_id, where_cond)
+    total_pages = math.ceil(total_rows / PAGE_SIZE) if total_rows > 0 else 1
+
+    # Výpočet offsetu
+    current_offset = (st.session_state.current_page - 1) * PAGE_SIZE
+
+    # Načtení dat pro aktuální stránku
     df = None
 
     if apply_filter and where_clause:
@@ -179,15 +251,44 @@ def main_data_browser():
 
     elif st.session_state.reload_data:
         if st.session_state.filter_applied and st.session_state.where_clause:
-            df = load_table_filtered(selected_table_id, st.session_state.where_clause)
+            df = load_table_filtered(selected_table_id, st.session_state.where_clause, offset=current_offset, limit=PAGE_SIZE)
         else:
-            df = load_table(selected_table_id)
+            df = load_table(selected_table_id, offset=current_offset, limit=PAGE_SIZE)
         st.session_state.reload_data = False
-
     if df is None:
-        df = load_table(selected_table_id)
+        df = load_table(selected_table_id, offset=current_offset, limit=PAGE_SIZE)
+
+    # --- NOVÉ UI PRO STRÁNKOVÁNÍ ---
+    st.caption(f"Zobrazeno {len(df)} z {total_rows} záznamů | Stránka {st.session_state.current_page}/{total_pages}")
+    if (len(df) == PAGE_SIZE) and (total_rows > PAGE_SIZE):
+        st.info(f"💡 Zobrazeno {len(df)} řádků z celkových {total_rows}. Pro další data použijte stránkování níže.")
+
+    p_col1, p_col2, p_col3, p_col4 = st.columns([1, 1, 2, 5])
+
+    if p_col1.button("<< První", disabled=(st.session_state.current_page == 1)):
+        st.session_state.current_page = 1
+        st.session_state.reload_data = True
+        st.rerun()
+
+    if p_col2.button("< Předchozí", disabled=(st.session_state.current_page == 1)):
+        st.session_state.current_page -= 1
+        st.session_state.reload_data = True
+        st.rerun()
+
+    if p_col3.button("Další >", disabled=(st.session_state.current_page == total_pages)):
+        st.session_state.current_page += 1
+        st.session_state.reload_data = True
+        st.rerun()
+
+    if p_col4.button("Poslední >>", disabled=(st.session_state.current_page == total_pages)):
+        st.session_state.current_page = total_pages
+        st.session_state.reload_data = True
+        st.rerun()
+    # --- Konec UI pro stránkování ---
 
     editor_key = f"editor_{st.session_state.editor_key_counter}"
+    if (len(df) == PAGE_SIZE) and (total_rows > PAGE_SIZE):
+        st.info(f"💡 Zobrazeno {len(df)} řádků z celkových {total_rows}. Pro další data použijte stránkování níže.")
     edited_df = display_data_editor(df, editor_key)
 
     if col2.button("🔁 ROLLBACK", width='stretch'):

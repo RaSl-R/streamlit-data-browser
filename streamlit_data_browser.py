@@ -241,15 +241,21 @@ def main_data_browser():
 
     # Načtení dat pro aktuální stránku
     df = None
-
     editor_key = f"editor_{st.session_state.editor_key_counter}"
 
-    elif st.session_state.reload_data:
+    if st.session_state.reload_data:
         if st.session_state.filter_applied and st.session_state.where_clause:
-            df = load_table_filtered(selected_table_id, st.session_state.where_clause, offset=current_offset, limit=PAGE_SIZE)
+            df = load_table_filtered(
+                selected_table_id,
+                st.session_state.where_clause,
+                offset=current_offset,
+                limit=PAGE_SIZE
+            )
         else:
             df = load_table(selected_table_id, offset=current_offset, limit=PAGE_SIZE)
+
         st.session_state.reload_data = False
+
     if df is None:
         df = load_table(selected_table_id, offset=current_offset, limit=PAGE_SIZE)
 

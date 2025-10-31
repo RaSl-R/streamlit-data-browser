@@ -102,7 +102,6 @@ def load_table(table_id, offset=0, limit=PAGE_SIZE):
         st.error(f"Došlo k chybě při načítání tabulky: {e}")
         return pd.DataFrame()
 
-
 @st.cache_data(ttl=3600)
 def load_table_filtered(table_id, where_clause=None, offset=0, limit=PAGE_SIZE):
     try:
@@ -137,7 +136,6 @@ def replace_table(table_id, df):
                       method='multi')
     except Exception as e:
         st.error(f"Došlo k chybě při načítání tabulky: {e}")
-        return pd.DataFrame() při načítání tabulky: {e}")
         return pd.DataFrame()
 
 def display_data_editor(df_to_edit, editor_key):

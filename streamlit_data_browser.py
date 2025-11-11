@@ -58,44 +58,33 @@ def validate_table_id(table_id: str) -> str:
     return safe_table_sql
 
 def validate_where_clause(where_clause: str, df_columns: list = None) -> str:
-    # Kontrola vstupů
-    if where_clause is None:
+    """Validuje WHERE klauzuli. Vrací prázdný string nebo validovanou klauzuli."""
+    
+    # Prázdný nebo None vstup = OK
+    if not where_clause:
         return ""
     
-    if not isinstance(where_clause, str):
-        raise TypeError(f"where_clause musí být string, ne {type(where_clause)}")
-    
-    if not where_clause.strip():
-        return ""
-    
-    if ";" in where_clause:
-        raise ValueError("WHERE klauzule nesmí obsahovat středník")
+    # Zakázané znaky a příkazy
+    if ";" in where_clause or "--" in where_clause or "/*" in where_clause:
+        raise ValueError("WHERE klauzule obsahuje zakázané znaky")
     
     forbidden = re.compile(r"\b(DELETE|UPDATE|INSERT|DROP|ALTER|EXEC|EXECUTE)\b", re.IGNORECASE)
     if forbidden.search(where_clause):
         raise ValueError("WHERE klauzule obsahuje zakázané SQL příkazy")
     
-    if "--" in where_clause or "/*" in where_clause:
-        raise ValueError("WHERE klauzule nesmí obsahovat komentáře")
-    
-    # Bezpečná kontrola df_columns
-    if df_columns is not None:
-        if not isinstance(df_columns, (list, tuple)):
-            raise TypeError(f"df_columns musí být list nebo tuple, ne {type(df_columns)}")
-        
-        if len(df_columns) > 0:
-            try:
-                column_pattern = r"\b(" + "|".join(re.escape(str(col)) for col in df_columns) + r")\b"
-                if not re.search(column_pattern, where_clause, re.IGNORECASE):
-                    raise ValueError(f"WHERE klauzule neobsahuje žádný platný sloupec")
-            except Exception as e:
-                raise ValueError(f"Chyba při validaci sloupců: {e}")
+    # Kontrola sloupců (pokud jsou zadány)
+    if df_columns and len(df_columns) > 0:
+        column_pattern = r"\b(" + "|".join(re.escape(str(col)) for col in df_columns) + r")\b"
+        if not re.search(column_pattern, where_clause, re.IGNORECASE):
+            raise ValueError(
+                f"Neplatný sloupec ve WHERE klauzuli.\n"
+                f"Dostupné sloupce: {', '.join(df_columns)}"
+            )
     
     return where_clause.strip()
 
 @st.cache_data
 def get_row_count(table_id: str, where_clause: str = None) -> int:
-    """Vrací celkový počet řádků v tabulce (s volitelným WHERE)."""
     try:
         safe_table_sql = validate_table_id(table_id)
         query = f"SELECT COUNT(*) FROM {safe_table_sql}"

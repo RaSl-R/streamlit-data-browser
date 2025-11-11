@@ -152,6 +152,7 @@ def clear_filter_callback():
     st.session_state.where_input = ""
     st.session_state.where_clause = ""
     st.session_state.filter_applied = False
+    st.session_state.current_page = 1
     st.session_state.reload_data = True
 
 def main_data_browser():
@@ -194,6 +195,23 @@ def main_data_browser():
     selected_table_name = st.selectbox("📂 Vyber tabulku", options=list(tables_dict.keys()))
     selected_table_id = tables_dict[selected_table_name]
 
+    # --- PŘIDAT TUTO NOVOU LOGIKU ---
+    # Sledujeme ID aktuální tabulky, abychom zjistili, zda se změnila
+    if "current_table_id" not in st.session_state:
+        st.session_state.current_table_id = selected_table_id
+
+    # Pokud se nově vybraná tabulka liší od té, co byla v session state
+    if st.session_state.current_table_id != selected_table_id:
+        st.session_state.current_page = 1
+        st.session_state.reload_data = True
+        st.session_state.current_table_id = selected_table_id
+        # Musíme také vymazat filtr, protože se vztahoval ke staré tabulce
+        clear_filter_callback() 
+        st.rerun() # Okamžitě znovu načteme s novým stavem
+        
+    st.session_state.current_table_id = selected_table_id
+    # --- KONEC NOVÉ LOGIKY ---
+
     if not selected_table_id:
         st.info("Nebyla vybrána žádná validní tabulka.")
         st.stop()
@@ -228,8 +246,8 @@ def main_data_browser():
 
     # Pokud se změní filtr nebo tabulka, resetujeme stránku na 1
     # (Toto je zjednodušená logika, možná bude potřeba ji zpřesnit)
-    if st.session_state.reload_data:
-        st.session_state.current_page = 1
+    # if st.session_state.reload_data:
+    #     st.session_state.current_page = 1
 
     # Získání celkového počtu řádků
     where_cond = st.session_state.where_clause if st.session_state.filter_applied else None
@@ -263,6 +281,7 @@ def main_data_browser():
         st.session_state.where_clause = where_clause
         st.session_state.filter_applied = True
         st.session_state.reload_data = True
+        st.session_state.current_page = 1
         st.session_state.editor_key_counter += 1
         st.rerun()
 

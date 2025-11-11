@@ -290,7 +290,7 @@ def main_data_browser():
 
     # --- NOVÉ UI PRO STRÁNKOVÁNÍ ---
     if (total_rows > PAGE_SIZE):
-        p_col1, p_col2, p_col3, p_col4, spacer = st.columns([1.4, 2, 2, 1.4, 12])
+        p_col1, p_col2, p_col3, p_col4, spacer = st.columns([1.4, 2, 2, 1.4, 4])
         if p_col1.button("<< První", disabled=(st.session_state.current_page == 1)):
             st.session_state.current_page = 1
             st.session_state.reload_data = True

@@ -57,11 +57,11 @@ def validate_table_id(table_id: str) -> str:
     safe_table_sql = f'"{schema_name}"."{table_name}"'
     return safe_table_sql
 
-def validate_where_clause(where_clause: str, df_columns: list) -> str | None:
+def validate_where_clause(where_clause: str, df_columns: list = None) -> str | None:
     if ";" in where_clause:
         return None
-    #if not any(col in where_clause for col in df_columns):
-    #    return None
+    if not any(col in where_clause for col in df_columns):
+        return None
     forbidden = re.compile(r"\b(DELETE|UPDATE|INSERT|DROP|ALTER|;|--)\b", re.IGNORECASE)
     if forbidden.search(where_clause):
         return None
@@ -75,7 +75,7 @@ def get_row_count(table_id: str, where_clause: str = None) -> int:
         query = f"SELECT COUNT(*) FROM {safe_table_sql}"
 
         if where_clause:
-            safe_where_clause = validate_where_clause(where_clause, [])
+            safe_where_clause = validate_where_clause(where_clause)
             if safe_where_clause:
                 query += f" WHERE {safe_where_clause}"
 
@@ -109,7 +109,7 @@ def load_table_filtered(table_id, where_clause=None, offset=0, limit=PAGE_SIZE):
         from utils.db import get_engine
         with get_engine().begin() as conn:
             if where_clause:
-                safe_where_clause = validate_where_clause(where_clause, [])
+                safe_where_clause = validate_where_clause(where_clause)
                 if safe_where_clause:
                     query_sql += f" WHERE {safe_where_clause}"
                 else:

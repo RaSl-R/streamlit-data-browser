@@ -290,23 +290,23 @@ def main_data_browser():
 
     # --- NOVÉ UI PRO STRÁNKOVÁNÍ ---
     if (total_rows > PAGE_SIZE):
-        p_col1, p_col2, p_col3, p_col4, spacer = st.columns([1, 2, 2, 1, 6])
-        if p_col1.button("<< První", disabled=(st.session_state.current_page == 1)):
+        p_col1, p_col2, p_col3, p_col4, spacer = st.columns([1.2, 1.8, 1.8, 1.2, 6], gap="small")
+        if p_col1.button("<< První", width='stretch', disabled=(st.session_state.current_page == 1)):
             st.session_state.current_page = 1
             st.session_state.reload_data = True
             st.session_state.editor_key_counter += 1
             st.rerun()
-        if p_col2.button("< Předchozí", disabled=(st.session_state.current_page == 1)):
+        if p_col2.button("< Předchozí", width='stretch', disabled=(st.session_state.current_page == 1)):
             st.session_state.current_page -= 1
             st.session_state.reload_data = True
             st.session_state.editor_key_counter += 1
             st.rerun()
-        if p_col3.button("Další >", disabled=(st.session_state.current_page == total_pages)):
+        if p_col3.button("Další >", width='stretch', disabled=(st.session_state.current_page == total_pages)):
             st.session_state.current_page += 1
             st.session_state.reload_data = True
             st.session_state.editor_key_counter += 1
             st.rerun()
-        if p_col4.button("Poslední >>", disabled=(st.session_state.current_page == total_pages)):
+        if p_col4.button("Poslední >>", width='stretch', disabled=(st.session_state.current_page == total_pages)):
             st.session_state.current_page = total_pages
             st.session_state.reload_data = True
             st.session_state.editor_key_counter += 1

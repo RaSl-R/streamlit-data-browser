@@ -57,16 +57,26 @@ def validate_table_id(table_id: str) -> str:
     safe_table_sql = f'"{schema_name}"."{table_name}"'
     return safe_table_sql
 
-def validate_where_clause(where_clause: str, df_columns: list = None) -> str | None:
+def validate_where_clause(where_clause: str, df_columns: list = None) -> str:
+    if not where_clause:
+        return ""
+    
     if ";" in where_clause:
-        return None
-    if df_columns:
-        if not any(col in where_clause for col in df_columns)):
-            return None
-    forbidden = re.compile(r"\b(DELETE|UPDATE|INSERT|DROP|ALTER|;|--)\b", re.IGNORECASE)
+        raise ValueError("WHERE klauzule nesmí obsahovat středník")
+    
+    forbidden = re.compile(r"\b(DELETE|UPDATE|INSERT|DROP|ALTER|EXEC|EXECUTE)\b", re.IGNORECASE)
     if forbidden.search(where_clause):
-        return None
-    return where_clause
+        raise ValueError("WHERE klauzule obsahuje zakázané SQL příkazy")
+    
+    if "--" in where_clause or "/*" in where_clause:
+        raise ValueError("WHERE klauzule nesmí obsahovat komentáře")
+    
+    if df_columns:
+        column_pattern = r"\b(" + "|".join(re.escape(col) for col in df_columns) + r")\b"
+        if not re.search(column_pattern, where_clause, re.IGNORECASE):
+            raise ValueError(f"WHERE klauzule neobsahuje žádný platný sloupec z: {df_columns}")
+    
+    return where_clause.strip()
 
 @st.cache_data
 def get_row_count(table_id: str, where_clause: str = None) -> int:

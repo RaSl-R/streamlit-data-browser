@@ -57,14 +57,10 @@ def validate_table_id(table_id: str) -> str:
     safe_table_sql = f'"{schema_name}"."{table_name}"'
     return safe_table_sql
 
-def validate_where_clause(where_clause: str, df_columns: list = None) -> str:
-    """Validuje WHERE klauzuli. Vrací prázdný string nebo validovanou klauzuli."""
-    
-    # Prázdný nebo None vstup = OK
+def validate_where_clause(where_clause: str, df_columns: list = None) -> str:    
     if not where_clause:
         return ""
     
-    # Zakázané znaky a příkazy
     if ";" in where_clause or "--" in where_clause or "/*" in where_clause:
         raise ValueError("WHERE klauzule obsahuje zakázané znaky")
     
@@ -72,7 +68,6 @@ def validate_where_clause(where_clause: str, df_columns: list = None) -> str:
     if forbidden.search(where_clause):
         raise ValueError("WHERE klauzule obsahuje zakázané SQL příkazy")
     
-    # Kontrola sloupců (pokud jsou zadány)
     if df_columns and len(df_columns) > 0:
         column_pattern = r"\b(" + "|".join(re.escape(str(col)) for col in df_columns) + r")\b"
         if not re.search(column_pattern, where_clause, re.IGNORECASE):

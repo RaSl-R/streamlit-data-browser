@@ -285,38 +285,33 @@ def main_data_browser():
         st.session_state.editor_key_counter += 1
         st.rerun()
 
+    st.caption(f"Zobrazeno {len(df)} z {total_rows} záznamů | Stránka {st.session_state.current_page}/{total_pages}")
     edited_df = display_data_editor(df, editor_key)
 
     # --- NOVÉ UI PRO STRÁNKOVÁNÍ ---
-    st.caption(f"Zobrazeno {len(df)} z {total_rows} záznamů | Stránka {st.session_state.current_page}/{total_pages}")
-    if (len(df) <= PAGE_SIZE) and (total_rows > PAGE_SIZE):
-        st.info(f"💡 Zobrazeno {len(df)} řádků z celkových {total_rows}. Pro další data použijte stránkování níže.")
-
+    if (total_rows > PAGE_SIZE):
         p_col1, p_col2, p_col3, p_col4 = st.columns([1, 1, 2, 5])
-
         if p_col1.button("<< První", disabled=(st.session_state.current_page == 1)):
             st.session_state.current_page = 1
             st.session_state.reload_data = True
             st.session_state.editor_key_counter += 1
             st.rerun()
-
         if p_col2.button("< Předchozí", disabled=(st.session_state.current_page == 1)):
             st.session_state.current_page -= 1
             st.session_state.reload_data = True
             st.session_state.editor_key_counter += 1
             st.rerun()
-
         if p_col3.button("Další >", disabled=(st.session_state.current_page == total_pages)):
             st.session_state.current_page += 1
             st.session_state.reload_data = True
             st.session_state.editor_key_counter += 1
             st.rerun()
-
         if p_col4.button("Poslední >>", disabled=(st.session_state.current_page == total_pages)):
             st.session_state.current_page = total_pages
             st.session_state.reload_data = True
             st.session_state.editor_key_counter += 1
             st.rerun()
+        st.info(f"💡 Zobrazeno {len(df)} řádků z celkových {total_rows}. Pro další data použijte tlačítka stránkování výše.")
     # --- Konec UI pro stránkování ---
 
     if col2.button("🔁 ROLLBACK", width='stretch'):

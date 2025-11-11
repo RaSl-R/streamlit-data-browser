@@ -60,8 +60,8 @@ def validate_table_id(table_id: str) -> str:
 def validate_where_clause(where_clause: str, df_columns: list) -> str | None:
     if ";" in where_clause:
         return None
-    if not any(col in where_clause for col in df_columns):
-        return None
+    #if not any(col in where_clause for col in df_columns):
+    #    return None
     forbidden = re.compile(r"\b(DELETE|UPDATE|INSERT|DROP|ALTER|;|--)\b", re.IGNORECASE)
     if forbidden.search(where_clause):
         return None
@@ -78,8 +78,6 @@ def get_row_count(table_id: str, where_clause: str = None) -> int:
             safe_where_clause = validate_where_clause(where_clause, [])
             if safe_where_clause:
                 query += f" WHERE {safe_where_clause}"
-            else:
-                st.warning("WHERE výraz není validní. Byl ignorován.")
 
         from utils.db import get_engine
         with get_engine().begin() as conn:

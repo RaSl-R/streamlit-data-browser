@@ -63,8 +63,8 @@ def validate_where_clause(where_clause: str, df_columns: list) -> str | None:
     #if not any(col in where_clause for col in df_columns):
     #    return None
     #forbidden = re.compile(r"\b(DELETE|UPDATE|INSERT|DROP|ALTER|;|--)\b", re.IGNORECASE)
-    #if forbidden.search(where_clause):
-    #    return None
+    if forbidden.search(where_clause):
+        return None
     return where_clause
 
 @st.cache_data

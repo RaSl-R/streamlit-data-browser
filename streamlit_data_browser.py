@@ -60,8 +60,9 @@ def validate_table_id(table_id: str) -> str:
 def validate_where_clause(where_clause: str, df_columns: list = None) -> str | None:
     if ";" in where_clause:
         return None
-    if (df_columns) and (not any(col in where_clause for col in df_columns)):
-        return None
+    if df_columns:
+        if not any(col in where_clause for col in df_columns)):
+            return None
     forbidden = re.compile(r"\b(DELETE|UPDATE|INSERT|DROP|ALTER|;|--)\b", re.IGNORECASE)
     if forbidden.search(where_clause):
         return None

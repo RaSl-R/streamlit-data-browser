@@ -153,7 +153,7 @@ def request_group_form():
                 text("""
                     SELECT g.name, u.requested_group_id
                     FROM auth.users u
-                    LEFT JOIN auth.groups g ON CAST(u.requested_group_id AS integer) = CAST(g.id AS integer)
+                    LEFT JOIN auth.groups g ON cast CAST(u.requested_group_id AS INTEGER) = CAST(g.id AS INTEGER)
                     WHERE u.email = :email
                 """),
                 {"email": st.session_state.user_email}

@@ -59,22 +59,19 @@ def validate_table_id(table_id: str) -> str:
 
 def validate_where_clause(where_clause: str, df_columns: list = None) -> str:    
     if not where_clause:
-        return ""
+        return None
     
     if ";" in where_clause or "--" in where_clause or "/*" in where_clause:
-        raise ValueError("WHERE klauzule obsahuje zakázané znaky")
+        return None
     
     forbidden = re.compile(r"\b(DELETE|UPDATE|INSERT|DROP|ALTER|EXEC|EXECUTE)\b", re.IGNORECASE)
     if forbidden.search(where_clause):
-        raise ValueError("WHERE klauzule obsahuje zakázané SQL příkazy")
+        return None
     
     if df_columns and len(df_columns) > 0:
         column_pattern = r"\b(" + "|".join(re.escape(str(col)) for col in df_columns) + r")\b"
         if not re.search(column_pattern, where_clause, re.IGNORECASE):
-            raise ValueError(
-                f"Neplatný sloupec ve WHERE klauzuli.\n"
-                f"Dostupné sloupce: {', '.join(df_columns)}"
-            )
+            return None
     
     return where_clause.strip()
 

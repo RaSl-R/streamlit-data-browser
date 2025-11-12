@@ -20,8 +20,8 @@ def get_user_permissions(conn, email: str) -> dict:
     query = text("""
         SELECT p.schema_name, MAX(p.permission) as max_permission
         FROM auth.users u
-        JOIN auth.user_groups ug ON u.id = ug.user_id
-        JOIN auth.group_schema_permissions p ON ug.group_id = p.group_id
+        JOIN auth.user_groups ug ON CAST(u.id AS INTEGER) = CAST(ug.user_id AS INTEGER)
+        JOIN auth.group_schema_permissions p ON CAST(ug.group_id AS INTEGER) = CAST(p.group_id AS INTEGER)
         WHERE u.email = :email
         GROUP BY p.schema_name;
     """)
@@ -153,7 +153,7 @@ def request_group_form():
                 text("""
                     SELECT g.name, u.requested_group_id
                     FROM auth.users u
-                    LEFT JOIN auth.groups g ON cast CAST(u.requested_group_id AS INTEGER) = CAST(g.id AS INTEGER)
+                    LEFT JOIN auth.groups g ON CAST(u.requested_group_id AS INTEGER) = CAST(g.id AS INTEGER)
                     WHERE u.email = :email
                 """),
                 {"email": st.session_state.user_email}
@@ -195,7 +195,7 @@ def request_group_form():
                 conn.execute(
                     text("""
                         UPDATE auth.users
-                        SET requested_group_id = :requested_group_id
+                        SET requested_group_id = CAST(:requested_group_id AS INTEGER)
                         WHERE email = :email
                     """),
                     {

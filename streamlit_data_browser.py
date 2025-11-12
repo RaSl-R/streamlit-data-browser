@@ -91,7 +91,6 @@ def get_row_count(table_id: str, where_clause: str = None) -> int:
             result = conn.execute(text(query)).scalar()
             return int(result)
     except Exception as e:
-        st.error(f"Chyba při zjišťování počtu řádků: {e}")
         return 0
 
 @st.cache_data(ttl=3600)
@@ -126,7 +125,7 @@ def load_table_filtered(table_id, where_clause=None, offset=0, limit=PAGE_SIZE):
             df = pd.DataFrame(result.fetchall(), columns=result.keys())
             return df
     except Exception as e:
-        st.error(f"Neexistující sloupec ve filtru.")
+        st.error(f"Špatně napsaná podmínka ve filtru.")
         return None
 
 def replace_table(table_id, df):

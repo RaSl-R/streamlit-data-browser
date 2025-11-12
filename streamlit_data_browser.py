@@ -125,12 +125,9 @@ def load_table_filtered(table_id, where_clause=None, offset=0, limit=PAGE_SIZE):
             result = conn.execute(text(query_sql), {"limit": limit, "offset": offset})
             df = pd.DataFrame(result.fetchall(), columns=result.keys())
             return df
-    except (ProgrammingError, psycopg2.errors.UndefinedColumn) as e:
+    except Exception as e:
         st.error(f"Neexistující sloupec ve filtru.")
         return None
-    except Exception as e:
-        st.error(f"Došlo k chybě při načítání tabulky: {e}")
-        return pd.DataFrame()
 
 def replace_table(table_id, df):
     try:

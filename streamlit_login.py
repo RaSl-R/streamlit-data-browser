@@ -1,6 +1,7 @@
 import streamlit as st
 import pandas as pd
 import secrets
+import time
 from datetime import datetime, timedelta
 from sqlalchemy import text
 from sqlalchemy.exc import IntegrityError
@@ -263,6 +264,11 @@ def password_reset_request_form():
         st.session_state.show_password_reset = False
         st.rerun()
 
+def get_groups(conn):
+    """Načte seznam skupin z databáze"""
+    result = conn.execute(text("SELECT id, name FROM auth.groups ORDER BY name"))
+    return {row[1]: row[0] for row in result}
+
 def password_reset_form(token: str):
     """Formulář pro nastavení nového hesla pomocí tokenu"""
     st.subheader("🔐 Nastavení nového hesla")
@@ -270,20 +276,21 @@ def password_reset_form(token: str):
     # Ověříme token hned na začátku
     with get_engine().begin() as conn:
         user_id, email = verify_reset_token(conn, token)
-    
-    if not user_id:
-        st.error("❌ Tento reset link je neplatný nebo vypršel.")
-        st.info("💡 Platnost linku je 1 hodina. Požádejte o nový reset link.")
         
-        if st.button("🔑 Požádat o nový link", use_container_width=True):
-            st.session_state.show_password_reset = True
-            # Smažeme token z URL
-            st.query_params.clear()
-            st.rerun()
-        return
+        if not user_id:
+            st.error("❌ Tento reset link je neplatný nebo vypršel.")
+            st.info("⏱ Platnost linku je 1 hodina. Požádejte o nový reset link.")
+            
+            # Tlačítko MIMO form - bezpečné
+            if st.button("🔄 Požádat o nový link", use_container_width=True):
+                st.session_state.show_password_reset = True
+                st.query_params.clear()
+                st.rerun()
+            return
     
     st.success(f"✅ Reset link je platný pro: {email}")
     
+    # --- ZAČÁTEK FORMULÁŘE ---
     with st.form("password_reset_form"):
         new_password = st.text_input("Nové heslo", type="password", key="reset_new_pass")
         
@@ -293,46 +300,51 @@ def password_reset_form(token: str):
             st.caption(f"Síla hesla: {strength}")
         
         confirm = st.text_input("Potvrzení nového hesla", type="password", key="reset_confirm_pass")
-        submitted = st.form_submit_button("✔️ Nastavit nové heslo", use_container_width=True)
         
-        if submitted:
-            # Kontrola shody hesel
-            if new_password != confirm:
-                st.error("❌ Hesla se neshodují")
-                return
+        submitted = st.form_submit_button("🔒 Nastavit nové heslo", use_container_width=True)
+    # --- KONEC FORMULÁŘE (nic dalšího uvnitř!) ---
+    
+    # Zpracování MIMO formulář
+    if submitted:
+        # Kontrola shody hesel
+        if new_password != confirm:
+            st.error("❌ Hesla se neshodují")
+            return
+        
+        # Validace síly hesla
+        is_valid, error_msg = validate_password_strength(new_password)
+        if not is_valid:
+            st.error(f"❌ {error_msg}")
+            return
+        
+        # Dokončíme reset
+        with get_engine().begin() as conn:
+            success, message = complete_password_reset(conn, token, new_password)
+        
+        if success:
+            st.success(f"✅ {message}")
+            st.balloons()
             
-            # Validace síly hesla
-            is_valid, error_msg = validate_password_strength(new_password)
-            if not is_valid:
-                st.error(f"❌ {error_msg}")
-                return
+            # KLÍČOVÉ: Vyčistíme URL a state PŘED rerun
+            st.query_params.clear()
+            st.session_state.show_password_reset = False
             
-            # Dokončíme reset
-            with get_engine().begin() as conn:
-                success, message = complete_password_reset(conn, token, new_password)
-                
-                if success:
-                    st.success(f"✅ {message}")
-                    st.balloons()
-                    
-                    # Smažeme token z URL a přesměrujeme na login
-                    st.query_params.clear()
-                    st.session_state.show_password_reset = False
-                    
-                    # Tlačítko pro přechod na login
-                    if st.button("→ Přejít na přihlášení", use_container_width=True):
-                        st.rerun()
-                else:
-                    st.error(f"❌ {message}")
+            # Zobrazíme info zprávu
+            st.info("🔄 Přesměrovávám na přihlášení...")
+            
+            # Krátká pauza pro přečtení zprávy
+            import time
+            time.sleep(1.5)
+            
+            # Automatické přesměrování
+            st.rerun()
+        else:
+            st.error(f"❌ {message}")
 
-def get_groups(conn):
-    """Načte seznam skupin z databáze"""
-    result = conn.execute(text("SELECT id, name FROM auth.groups ORDER BY name"))
-    return {row[1]: row[0] for row in result}
 
 def register_form():
-    """Registrační formulář"""
-    st.subheader("Registrace nového účtu")
+    """Registrační formulář s automatickým přesměrováním"""
+    st.subheader("📝 Registrace nového účtu")
     
     with st.form("register_form"):
         email = st.text_input("Email", placeholder="vas.email@example.com")
@@ -355,56 +367,63 @@ def register_form():
             requested_group_name = None
         
         submitted = st.form_submit_button("📝 Registrovat", use_container_width=True)
+    
+    if submitted:
+        # Validace e-mailu
+        is_valid_email, email_error = validate_email(email)
+        if not is_valid_email:
+            st.error(f"❌ {email_error}")
+            return
         
-        if submitted:
-            # Validace e-mailu
-            is_valid_email, email_error = validate_email(email)
-            if not is_valid_email:
-                st.error(f"❌ {email_error}")
-                return
+        # Kontrola shody hesel
+        if password != confirm:
+            st.error("❌ Hesla se neshodují")
+            return
+        
+        # Validace síly hesla
+        is_valid_password, password_error = validate_password_strength(password)
+        if not is_valid_password:
+            st.error(f"❌ {password_error}")
+            return
+        
+        if not requested_group_name:
+            st.error("❌ Vyberte skupinu")
+            return
+
+        # Hashování a ukládání
+        hashed = hash_password(password)
+        requested_group_id = groups_dict.get(requested_group_name)
+        
+        try:
+            with get_engine().begin() as conn:
+                conn.execute(
+                    text("""
+                        INSERT INTO auth.users (email, password_hash, requested_group_id)
+                        VALUES (:email, :hash, :requested_group_id)
+                    """),
+                    {"email": email, "hash": hashed, "requested_group_id": requested_group_id}
+                )
             
-            # Kontrola shody hesel
-            if password != confirm:
-                st.error("❌ Hesla se neshodují")
-                return
+            st.success("✅ Registrace proběhla úspěšně!")
+            st.info("🔄 Nyní se můžete přihlásit. Přesměrovávám...")
             
-            # Validace síly hesla
-            is_valid_password, password_error = validate_password_strength(password)
-            if not is_valid_password:
-                st.error(f"❌ {password_error}")
-                return
+            # Volitelně odešleme uvítací e-mail
+            send_welcome_email(email)
             
-            if not requested_group_name:
-                st.error("❌ Vyberte skupinu")
-                return
+            # Krátká pauza pro přečtení zprávy
+            import time
+            time.sleep(2)
             
-            # Hashování a ukládání
-            hashed = hash_password(password)
-            requested_group_id = groups_dict.get(requested_group_name)
+            # Automatické přesměrování na login
+            st.rerun()
             
-            try:
-                with get_engine().begin() as conn:
-                                                                              
-                    conn.execute(
-                        text("""
-                            INSERT INTO auth.users (email, password_hash, requested_group_id)
-                            VALUES (:email, :hash, :requested_group_id)
-                        """),
-                        {"email": email, "hash": hashed, "requested_group_id": requested_group_id}
-                    )
-                st.success("✅ Registrace proběhla úspěšně, nyní se přihlaste.")
-                st.info("💡 Nyní se můžete přihlásit.")
-                
-                # Volitelně odešleme uvítací e-mail
-                send_welcome_email(email)
-                
-            except IntegrityError as e:
-                if "unique_email" in str(e).lower() or "duplicate" in str(e).lower():
-                    st.error("❌ Tento e-mail je již registrován.")
-                else:
-                    st.error(f"❌ Chyba databáze: {e}")
-            except Exception as e:
-                st.error(f"❌ Chyba: {e}")
+        except IntegrityError as e:
+            if "unique_email" in str(e).lower() or "duplicate" in str(e).lower():
+                st.error("❌ Tento e-mail je již registrován.")
+            else:
+                st.error(f"❌ Chyba databáze: {e}")
+        except Exception as e:
+            st.error(f"❌ Chyba: {e}")
 
 def change_password_form():
     """Formulář pro změnu hesla přihlášeného uživatele"""

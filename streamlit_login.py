@@ -515,7 +515,7 @@ def request_group_form():
                             }
                         )
                     st.cache_data.clear()
-                    st.success(f"✅ Žádost o skupinu „{requested_group_name}" byla odeslána.")
+                    st.success(f"✅ Žádost o skupinu '{requested_group_name}' byla odeslána.")
                     st.rerun()
                 except Exception as e:
                     st.error(f"❌ Chyba při odesílání žádosti: {e}")

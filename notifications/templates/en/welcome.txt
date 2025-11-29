@@ -1,0 +1,23 @@
+=====================================
+Welcome to {{app_name}}!
+=====================================
+
+Hello,
+
+Your account has been successfully created and you can start using {{app_name}}.
+
+✅ Account activated
+
+You can now log in and start working with database data.
+
+Log in:
+{{app_url}}
+
+---
+
+If you did not register for {{app_name}}, you can safely ignore this email.
+
+Best regards,
+{{app_name}} team
+
+This email was sent automatically, please do not reply to it.

@@ -9,6 +9,7 @@ from auth.validation.email_validator import EmailValidator
 from auth.validation.password_validator import PasswordValidator
 from core.session import SessionManager
 from core.database import get_db_transaction
+# UPDATED IMPORT - používá novou strukturu
 from notifications.email_service import EmailService
 
 class AuthUI:
@@ -109,8 +110,13 @@ class AuthUI:
                     st.success("✅ Registrace proběhla úspěšně!")
                     st.info("ℹ Nyní se můžete přihlásit. Přesměrovávám...")
                     
-                    # Odeslání uvítacího emailu
-                    EmailService.send_welcome_email(email)
+                    # Odeslání uvítacího emailu - UPDATED použití
+                    try:
+                        EmailService.send_welcome_email(email)
+                    except Exception as e:
+                        # Email selhání není kritické
+                        from core.logger import logger
+                        logger.warning(f"Failed to send welcome email: {e}")
                     
                     time.sleep(2)
                     st.rerun()
@@ -143,12 +149,15 @@ class AuthUI:
                 result = AuthService.request_password_reset(email)
                 
                 if result.success and result.token:
-                    # Odeslání emailu
-                    if EmailService.send_password_reset_email(result.email, result.token):
-                        st.success("✅ E-mail s instrukcemi byl odeslán.")
-                        st.info("⏱ Odkaz je platný 1 hodinu.")
-                    else:
-                        st.error("❌ Chyba při odesílání e-mailu.")
+                    # Odeslání emailu - UPDATED použití
+                    try:
+                        if EmailService.send_password_reset_email(result.email, result.token):
+                            st.success("✅ E-mail s instrukcemi byl odeslán.")
+                            st.info("⏱ Odkaz je platný 1 hodinu.")
+                        else:
+                            st.error("❌ Chyba při odesílání e-mailu.")
+                    except Exception as e:
+                        st.error(f"❌ Chyba při odesílání e-mailu: {e}")
                 else:
                     st.success("✅ " + result.message)
         

@@ -1,0 +1,23 @@
+=====================================
+Vítejte v {{app_name}}!
+=====================================
+
+Dobrý den,
+
+Váš účet byl úspěšně vytvořen a můžete začít používat aplikaci {{app_name}}.
+
+✅ Účet byl aktivován
+
+Nyní se můžete přihlásit a začít pracovat s databázovými daty.
+
+Přihlásit se:
+{{app_url}}
+
+---
+
+Pokud jste se neregistrovali v aplikaci {{app_name}}, můžete tento e-mail ignorovat.
+
+S pozdravem,
+{{app_name}} tým
+
+Tento e-mail byl odeslán automaticky, neodpovídejte na něj.

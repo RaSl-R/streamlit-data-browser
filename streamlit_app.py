@@ -11,7 +11,7 @@ from config.settings import settings
 st.set_page_config(
     layout="wide",
     page_title=settings.app.app_name,
-    page_icon="🗂"
+    page_icon="🗂️️️️️"
 )
 
 def main():
@@ -93,7 +93,7 @@ def render_login_view():
     col1, col2, col3 = st.columns([1, 2, 1])
     
     with col2:
-        st.title("🗂 Data Browser")
+        st.title("🗂️️️️️ Data Browser")
         st.markdown("### Bezpečný přístup k datům")
     
     st.markdown("---")

@@ -51,7 +51,7 @@ class BrowserUI:
     @require_auth
     def render(self):
         """Hlavní render metoda pro Data Browser"""
-        st.title("🗂 Data Browser")
+        st.title("🗂️️️ Data Browser")
         
         # Zobrazení zpráv
         message = SessionManager.get_and_clear_message()
@@ -68,7 +68,7 @@ class BrowserUI:
         
         # Výběr schématu
         selected_schema = st.selectbox(
-            "📁 Vyber schéma",
+            "📂 Vyber schéma",
             schemas,
             index=0,
             key="selected_schema"
@@ -108,7 +108,25 @@ class BrowserUI:
             WHERE klauzule nebo None
         """
         expander_label = "🔍 Filtrováno" if st.session_state.filter_applied else "🔍 Filtr"
+        custom_expander_id = "filter-expander"
+
+        if st.session_state.filter_applied:
+            st.markdown(
+                f"""
+                <style>
+                    div[data-testid="stExpander"][data-id="{custom_expander_id}"] > div {{
+                        background-color: #fff3cd;
+                    }}
+                </style>
+                """,
+                unsafe_allow_html=True
+            )
         
+        st.markdown(
+            f'<div data-id="{custom_expander_id}">', 
+            unsafe_allow_html=True
+        )
+
         with st.expander(expander_label, expanded=st.session_state.filter_applied):
             where_clause = st.text_input(
                 "Zadej WHERE podmínku (bez klíčového slova 'WHERE')",
@@ -142,17 +160,14 @@ class BrowserUI:
                     st.error(f"❌ {filter_state.error_message}")
                     return None
         
+        st.markdown("</div>", unsafe_allow_html=True)
+
         return st.session_state.where_clause if st.session_state.filter_applied else None
     
     def _render_pagination(self, query_result):
         """Renderuje ovládací prvky pro stránkování"""
         if query_result.total_rows <= PAGE_SIZE:
             return
-        
-        st.caption(
-            f"Zobrazeno {query_result.row_count} z {query_result.total_rows} záznamů | "
-            f"Stránka {query_result.page}/{query_result.total_pages}"
-        )
         
         col1, col2, col3, col4, _ = st.columns([1.6, 2.4, 2.4, 1.6, 4], gap="small")
         
@@ -302,15 +317,13 @@ class BrowserUI:
             
             df = query_result.data
             
-            # Panel s filtrem
-            self._render_filter_panel(df.columns.tolist() if not df.empty else [])
-            
-            # Info o datech
-            st.caption(
-                f"Zobrazeno {query_result.row_count} z {query_result.total_rows} záznamů | "
-                f"Stránka {query_result.page}/{query_result.total_pages}"
-            )
-            
+            # Panel s filtrem a akční tlačítka
+            col1, col2 = st.columns([6, 2])
+            with col1:
+                self._render_filter_panel(df.columns.tolist() if not df.empty else [])
+            with col2:
+                self._render_action_buttons(selected_table_id, edited_df)
+
             # Data editor
             editor_key = f"editor_{st.session_state.editor_key_counter}"
             edited_df = st.data_editor(
@@ -320,18 +333,18 @@ class BrowserUI:
                 key=editor_key
             )
             
+            # Info o datech
+            st.caption(
+                f"Zobrazeno {query_result.row_count} z {query_result.total_rows} záznamů | "
+                f"Stránka {query_result.page}/{query_result.total_pages}"
+            ) 
+
             # Stránkování
             self._render_pagination(query_result)
             
-            # Akční tlačítka
-            self._render_action_buttons(selected_table_id, edited_df)
-            
             # Export/Import
-            col1, col2 = st.columns(2)
-            with col1:
-                self._render_export_section(edited_df, table_name)
-            with col2:
-                self._render_import_section(selected_table_id)
+            self._render_export_section(edited_df, table_name)
+            self._render_import_section(selected_table_id)
             
         except PermissionDeniedError as e:
             st.error(f"❌ {str(e)}")

@@ -80,7 +80,7 @@ class Settings:
         
         # App
         self.app = AppConfig(
-            app_name=st.secrets.get("APP_NAME", "RaSl Data Browser"),
+            app_name=st.secrets.get("APP_NAME", "Data Browser"),
             app_url=st.secrets.get("APP_URL", "http://localhost:8501"),
             debug=st.secrets.get("DEBUG", False),
             log_level=st.secrets.get("LOG_LEVEL", "INFO"),

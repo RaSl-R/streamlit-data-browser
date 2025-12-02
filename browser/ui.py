@@ -317,13 +317,9 @@ class BrowserUI:
             
             df = query_result.data
             
-            # Panel s filtrem a akční tlačítka
-            col1, col2 = st.columns([6, 2])
-            with col1:
-                self._render_filter_panel(df.columns.tolist() if not df.empty else [])
-            with col2:
-                self._render_action_buttons(selected_table_id, edited_df)
-
+            # Panel s filtrem
+            self._render_filter_panel(df.columns.tolist() if not df.empty else [])
+            
             # Data editor
             editor_key = f"editor_{st.session_state.editor_key_counter}"
             edited_df = st.data_editor(
@@ -342,6 +338,9 @@ class BrowserUI:
             # Stránkování
             self._render_pagination(query_result)
             
+            # Akční tlačítka
+            self._render_action_buttons(selected_table_id, edited_df)
+
             # Export/Import
             self._render_export_section(edited_df, table_name)
             self._render_import_section(selected_table_id)

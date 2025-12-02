@@ -155,7 +155,7 @@ class GroupRepository:
                 text("""
                     SELECT g.name
                     FROM auth.users u
-                    LEFT JOIN auth.groups g ON u.requested_group_id = g.id
+                    LEFT JOIN auth.groups g ON CAST(u.requested_group_id AS double precision) = g.id
                     WHERE u.email = :email
                 """),
                 {"email": email}

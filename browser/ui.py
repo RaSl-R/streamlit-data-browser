@@ -58,7 +58,7 @@ class BrowserUI:
         st.title("🗂️️️ Data Browser")
         
         self._load_css()
-        
+
         # Zobrazení zpráv
         message = SessionManager.get_and_clear_message()
         if message:
@@ -116,24 +116,6 @@ class BrowserUI:
         expander_label = "🔍 Filtrováno" if st.session_state.filter_applied else "🔍 Filtr"
         custom_expander_id = "filter-expander"
 
-        if st.session_state.filter_applied:
-            st.markdown(
-                f"""
-                <style>
-                    div[data-testid="stExpander"][data-id="{custom_expander_id}"] > div {{
-                        background-color: #fff3cd !important;
-                        border-radius: 8px;
-                    }}
-                </style>
-                """,
-                unsafe_allow_html=True
-            )
-        
-        st.markdown(
-            f'<div data-id="{custom_expander_id}">', 
-            unsafe_allow_html=True
-        )
-
         with st.expander(expander_label, expanded=st.session_state.filter_applied):
             where_clause = st.text_input(
                 "Zadej WHERE podmínku (bez klíčového slova 'WHERE')",
@@ -166,8 +148,6 @@ class BrowserUI:
                 else:
                     st.error(f"❌ {filter_state.error_message}")
                     return None
-        
-        st.markdown("</div>", unsafe_allow_html=True)
 
         return st.session_state.where_clause if st.session_state.filter_applied else None
     

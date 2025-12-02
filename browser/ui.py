@@ -117,8 +117,7 @@ class BrowserUI:
         custom_expander_id = "filter-expander"
 
         if st.session_state.filter_applied:
-            with open("browser.css") as f:
-                st.markdown(f"<style>{f.read()}</style>", unsafe_allow_html=True)
+            self._load_css()
 
         with st.expander(expander_label, expanded=st.session_state.filter_applied):
             where_clause = st.text_input(

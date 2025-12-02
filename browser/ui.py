@@ -203,7 +203,7 @@ class BrowserUI:
     
     def _render_action_buttons(self, selected_table_id: str, edited_df: pd.DataFrame):
         """Renderuje akční tlačítka (ROLLBACK, COMMIT)"""
-        col1, col2, _ = st.columns([1, 1, 6])
+        col1, col2, _ = st.columns([1, 1, 2])
         
         with col1:
             if st.button("↩ ROLLBACK", use_container_width=True):

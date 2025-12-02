@@ -57,7 +57,7 @@ class BrowserUI:
         """Hlavní render metoda pro Data Browser"""
         st.title("🗂️️️ Data Browser")
         
-        self._load_css()
+        # self._load_css()
 
         # Zobrazení zpráv
         message = SessionManager.get_and_clear_message()
@@ -115,6 +115,10 @@ class BrowserUI:
         """
         expander_label = "🔍 Filtrováno" if st.session_state.filter_applied else "🔍 Filtr"
         custom_expander_id = "filter-expander"
+
+        if st.session_state.filter_applied:
+            with open("browser.css") as f:
+                st.markdown(f"<style>{f.read()}</style>", unsafe_allow_html=True)
 
         with st.expander(expander_label, expanded=st.session_state.filter_applied):
             where_clause = st.text_input(

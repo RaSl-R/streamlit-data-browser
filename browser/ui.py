@@ -244,7 +244,7 @@ class BrowserUI:
             file_name = f"{table_name}_{timestamp}.csv"
             
             st.download_button(
-                "⬇ Stáhnout aktuální pohled jako CSV",
+                "⬇️ Stáhnout aktuální pohled jako CSV",
                 csv,
                 file_name=file_name,
                 mime='text/csv'

@@ -33,6 +33,10 @@ class BrowserUI:
         if "current_table_id" not in st.session_state:
             st.session_state.current_table_id = None
     
+    def _load_css(self):
+        with open("static/css/browser.css") as f:
+            st.markdown(f"<style>{f.read()}</style>", unsafe_allow_html=True)
+
     def _clear_filter(self):
         """Vyčistí filtr a resetuje stránkování"""
         st.session_state.where_clause = ""
@@ -52,6 +56,8 @@ class BrowserUI:
     def render(self):
         """Hlavní render metoda pro Data Browser"""
         st.title("🗂️️️ Data Browser")
+        
+        self._load_css()
         
         # Zobrazení zpráv
         message = SessionManager.get_and_clear_message()
@@ -115,7 +121,8 @@ class BrowserUI:
                 f"""
                 <style>
                     div[data-testid="stExpander"][data-id="{custom_expander_id}"] > div {{
-                        background-color: #fff3cd;
+                        background-color: #fff3cd !important;
+                        border-radius: 8px;
                     }}
                 </style>
                 """,
@@ -319,7 +326,7 @@ class BrowserUI:
             
             # Panel s filtrem
             self._render_filter_panel(df.columns.tolist() if not df.empty else [])
-            
+
             # Data editor
             editor_key = f"editor_{st.session_state.editor_key_counter}"
             edited_df = st.data_editor(
